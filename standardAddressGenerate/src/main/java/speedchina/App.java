@@ -4,10 +4,12 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
 import speedchina.addresselement.service.impl.AddressElementServiceImpl;
+import tk.mybatis.spring.annotation.MapperScan;
 
 /**
  * @author 11852
  */
+@MapperScan(basePackages = "speedchina.addresselement.dao")
 @SpringBootApplication
 public class App {
 

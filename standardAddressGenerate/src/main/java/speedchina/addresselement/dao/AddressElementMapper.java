@@ -7,13 +7,11 @@ import speedchina.addresselement.mapper.SpeedMapper;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 
 /**
  * AddressElementMapper
  * @author 11852
  */
-@Mapper
 public interface AddressElementMapper extends SpeedMapper<AddressElement> {
 
 
@@ -21,7 +19,8 @@ public interface AddressElementMapper extends SpeedMapper<AddressElement> {
      * 获取所有地址元素（不包含市）
      * @return
      */
-    @Select("SELECT * FROM address_element_processing where address_element_type != 14;")
+    @Select("SELECT id,parent_id as parentId,address_element_name as addressElementName,address_element_type as addressElementType," +
+            "lng,lat,status,organization_code as organizationCode FROM address_element_processing where address_element_type != 14;")
     List<AddressElement> getAllElement();
 
     /**

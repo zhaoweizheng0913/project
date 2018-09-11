@@ -15,6 +15,7 @@ import speedchina.addresselement.tools.AddressElementTypeEnum;
 import java.util.*;
 
 /**
+ * AddressElementServiceImpl
  * @author 11852
  */
 @Service
@@ -46,7 +47,6 @@ public class AddressElementServiceImpl {
         //step2:生成map<parentId,set<element>>的数据格式，供step3处理
         Map<String, Set<AddressElement>> mapForBuildTree = new HashMap<String, Set<AddressElement>>();
         for (AddressElement temp : addressElementList) {
-            logger.info("格式处理，剩余：" + count--);
             if (mapForBuildTree.containsKey(temp.getParentId())) {
                 mapForBuildTree.get(temp.getParentId()).add(temp);
             } else {
@@ -75,7 +75,7 @@ public class AddressElementServiceImpl {
         addressElementList = null;
 
         logger.info("生成标准地址...");
-        this.generateStandardAddress(addressElementMap, standardElementSet);
+        this.generateStandardAddress(addressElementMap, standardElementSet,root.getId());
         logger.info("生成标准地址...完成!");
 
     }
@@ -122,8 +122,9 @@ public class AddressElementServiceImpl {
      * 生成标准地址
      * @param nodeMap  key : addressElementId value : addressElement
      * @param finalElementSet 所有叶子节点元素
+     * @param cityId
      */
-    private void generateStandardAddress(Map<String, AddressElement> nodeMap, Set<AddressElement> finalElementSet) {
+    private void generateStandardAddress(Map<String, AddressElement> nodeMap, Set<AddressElement> finalElementSet,String cityId) {
 
         //获取组织机构map
         List<Organization> organizationList = organizationMapper.selectAll();
@@ -140,21 +141,16 @@ public class AddressElementServiceImpl {
         for (AddressElement finalElement : finalElementSet) {
             logger.info("标准地址剩余:" + num--);
 
-            StandardAddress standardAddress = new StandardAddress();
             StringBuffer standardAddressName = new StringBuffer(this.appendSuffix(finalElement));
             StringBuffer standardAddressPath = new StringBuffer(finalElement.getId());
-            // 标准地址id、status、typeCode、location   注：标准地址id为该标准地址最末节点地址元素id
-            standardAddress.setId(finalElement.getId());
-            standardAddress.setStatus(finalElement.getStatus());
-            standardAddress.setStandardAddressType(finalElement.getAddressElementType());
-            if (null != finalElement.getLng() && null != finalElement.getLat()) {
-                String location = "{\"lat\":"+finalElement.getLat()+",\"lng\":"+finalElement.getLng()+"}";
-                standardAddress.setLocation(location);
-            }
+            //初始化标准地址补充基本信息
+            StandardAddress standardAddress = new StandardAddress();
+            standardAddress.setCityId(cityId);
+            standardAddress = this.supplementInformation(standardAddress,finalElement);
 
             AddressElement parentNode = nodeMap.get(finalElement.getParentId());
 
-            //回溯生成标准地址
+            //回溯生成标准地址路径、名称、对应字段id
             int count = 0;
             while (null != parentNode && count < 25) {
                 count++;
@@ -162,7 +158,7 @@ public class AddressElementServiceImpl {
                 standardAddressName.insert(0,appendSuffix(parentNode));
                 standardAddressPath.insert(0,parentNode.getId() + "/");
 
-                this.supplementId(standardAddress,parentNode,organizationMap);
+                standardAddress = this.supplementId(standardAddress,parentNode,organizationMap);
 
                 if (null != parentNode.getParentId()) {
                     parentNode = nodeMap.get(parentNode.getParentId());
@@ -170,7 +166,8 @@ public class AddressElementServiceImpl {
                     parentNode = null;
                 }
             }
-
+            standardAddress.setStandardAddressName(standardAddressName.toString());
+            standardAddress.setStandardAddressPath(standardAddressPath.toString());
             if (count <= 20) {
                 insertData.add(standardAddress);
                 if (insertData.size() > 0 && insertData.size() % 5000 == 0) {
@@ -198,15 +195,72 @@ public class AddressElementServiceImpl {
     private StandardAddress supplementId(StandardAddress standardAddress,AddressElement addressElement,
                                          Map<String,String> organizationMap){
         //设置行政区划id 与 组织机构id
-        if (addressElement.getAddressElementType() <= AddressElementTypeEnum.JIEDAOBANSHICHU.typeCode) {
+        if (standardAddress.getAdministrativeRegionId() == null&&
+                addressElement.getAddressElementType() <= AddressElementTypeEnum.JIEDAOBANSHICHU.typeCode)
             standardAddress.setAdministrativeRegionId(addressElement.getId());
-        }
-        if(organizationMap.containsKey(addressElement.getOrganizationCode())){
+
+        if(organizationMap.containsKey(addressElement.getOrganizationCode()))
             standardAddress.setOrganizationId(organizationMap.get(addressElement.getOrganizationCode()));
+
+        if(AddressElementTypeEnum.DANYUAN.typeCode == addressElement.getAddressElementType())
+            standardAddress.setUnitId(addressElement.getId());
+        if(AddressElementTypeEnum.JIANZHUWU.typeCode == addressElement.getAddressElementType())
+            standardAddress.setBuildingId(addressElement.getId());
+        if(AddressElementTypeEnum.MENPAIHAO.typeCode == addressElement.getAddressElementType())
+            standardAddress.setHouseNumberId(addressElement.getId());
+        if(AddressElementTypeEnum.ZIRANCUN.typeCode == addressElement.getAddressElementType())
+            standardAddress.setNaturalVillageId(addressElement.getId());
+        if(AddressElementTypeEnum.XIAOQU.typeCode == addressElement.getAddressElementType())
+            standardAddress.setHousingEstateId(addressElement.getId());
+        if(AddressElementTypeEnum.JIELUXIANG.typeCode == addressElement.getAddressElementType())
+            standardAddress.setStreetId(addressElement.getId());
+        if(AddressElementTypeEnum.ZU.typeCode == addressElement.getAddressElementType())
+            standardAddress.setGroupId(addressElement.getId());
+        if(AddressElementTypeEnum.CUNWEIHUI.typeCode == addressElement.getAddressElementType()||
+                AddressElementTypeEnum.JUWEIHUI.typeCode == addressElement.getAddressElementType()||
+                AddressElementTypeEnum.SHEQU.typeCode == addressElement.getAddressElementType()||
+                AddressElementTypeEnum.SHEQUJUCUNWEIHUI.typeCode == addressElement.getAddressElementType())
+            standardAddress.setCommunityId(addressElement.getId());
+        if(AddressElementTypeEnum.JIEDAOBANSHICHU.typeCode == addressElement.getAddressElementType()||
+                AddressElementTypeEnum.JIANZHIZHEN.typeCode == addressElement.getAddressElementType()||
+                AddressElementTypeEnum.JIANZHIXIANG.typeCode == addressElement.getAddressElementType()||
+                AddressElementTypeEnum.XIANGZHENJIEDAO.typeCode == addressElement.getAddressElementType())
+            standardAddress.setTownId(addressElement.getId());
+        if(AddressElementTypeEnum.QU.typeCode == addressElement.getAddressElementType()||
+                AddressElementTypeEnum.XIAN.typeCode == addressElement.getAddressElementType())
+            standardAddress.setCountyId(addressElement.getId());
+
+        return standardAddress;
+    }
+
+    /**
+     * 生成标准地址基础信息
+     * @param standardAddress
+     * @param finalElement
+     * @return
+     */
+    private StandardAddress supplementInformation(StandardAddress standardAddress,AddressElement finalElement){
+        // 标准地址id、status、typeCode、location   注：标准地址id为该标准地址最末节点地址元素id
+        standardAddress.setId(finalElement.getId());
+        standardAddress.setStatus(finalElement.getStatus());
+        standardAddress.setStandardAddressType(finalElement.getAddressElementType());
+        standardAddress.setOrganizationCode(finalElement.getOrganizationCode());
+        if (null != finalElement.getLng() && null != finalElement.getLat()) {
+            String location = "{\"lat\":"+finalElement.getLat()+",\"lng\":"+finalElement.getLng()+"}";
+            standardAddress.setLocation(location);
         }
-        
-
-
+        if(AddressElementTypeEnum.HUSHI.typeCode == finalElement.getAddressElementType()){
+            standardAddress.setRoomId(finalElement.getId());
+        }
+        if(AddressElementTypeEnum.DANYUAN.typeCode == finalElement.getAddressElementType()){
+            standardAddress.setUnitId(finalElement.getId());
+        }
+        if(AddressElementTypeEnum.JIANZHUWU.typeCode == finalElement.getAddressElementType()){
+            standardAddress.setBuildingId(finalElement.getId());
+        }
+        if(AddressElementTypeEnum.MENPAIHAO.typeCode == finalElement.getAddressElementType()){
+            standardAddress.setHouseNumberId(finalElement.getId());
+        }
         return standardAddress;
     }
 
