@@ -43,11 +43,6 @@ public class StandardAddress {
     private String organizationId;
 
     /**
-     * 组织机构代码
-     */
-    private String organizationCode;
-
-    /**
      * 市id
      */
     private String cityId;

@@ -19,8 +19,8 @@ public interface AddressElementMapper extends SpeedMapper<AddressElement> {
      * 获取所有地址元素（不包含市）
      * @return
      */
-    @Select("SELECT id,parent_id as parentId,address_element_name as addressElementName,address_element_type as addressElementType," +
-            "lng,lat,status,organization_code as organizationCode FROM address_element_processing where address_element_type != 14;")
+    @Select("SELECT id,parent_id,address_element_name,address_element_type,lng,lat,status," +
+            "organization_code FROM address_element_processing where address_element_type != 14;")
     List<AddressElement> getAllElement();
 
     /**

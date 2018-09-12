@@ -146,7 +146,7 @@ public class AddressElementServiceImpl {
             //初始化标准地址补充基本信息
             StandardAddress standardAddress = new StandardAddress();
             standardAddress.setCityId(cityId);
-            standardAddress = this.supplementInformation(standardAddress,finalElement);
+            standardAddress = this.supplementInformation(standardAddress,finalElement,organizationMap);
 
             AddressElement parentNode = nodeMap.get(finalElement.getParentId());
 
@@ -158,7 +158,7 @@ public class AddressElementServiceImpl {
                 standardAddressName.insert(0,appendSuffix(parentNode));
                 standardAddressPath.insert(0,parentNode.getId() + "/");
 
-                standardAddress = this.supplementId(standardAddress,parentNode,organizationMap);
+                standardAddress = this.supplementId(standardAddress,parentNode);
 
                 if (null != parentNode.getParentId()) {
                     parentNode = nodeMap.get(parentNode.getParentId());
@@ -192,15 +192,11 @@ public class AddressElementServiceImpl {
      * @param standardAddress
      * @return
      */
-    private StandardAddress supplementId(StandardAddress standardAddress,AddressElement addressElement,
-                                         Map<String,String> organizationMap){
-        //设置行政区划id 与 组织机构id
+    private StandardAddress supplementId(StandardAddress standardAddress,AddressElement addressElement){
+        //设置行政区划id
         if (standardAddress.getAdministrativeRegionId() == null&&
                 addressElement.getAddressElementType() <= AddressElementTypeEnum.JIEDAOBANSHICHU.typeCode)
             standardAddress.setAdministrativeRegionId(addressElement.getId());
-
-        if(organizationMap.containsKey(addressElement.getOrganizationCode()))
-            standardAddress.setOrganizationId(organizationMap.get(addressElement.getOrganizationCode()));
 
         if(AddressElementTypeEnum.DANYUAN.typeCode == addressElement.getAddressElementType())
             standardAddress.setUnitId(addressElement.getId());
@@ -239,16 +235,19 @@ public class AddressElementServiceImpl {
      * @param finalElement
      * @return
      */
-    private StandardAddress supplementInformation(StandardAddress standardAddress,AddressElement finalElement){
+    private StandardAddress supplementInformation(StandardAddress standardAddress,AddressElement finalElement,
+                                                  Map<String,String> organizationMap){
         // 标准地址id、status、typeCode、location   注：标准地址id为该标准地址最末节点地址元素id
         standardAddress.setId(finalElement.getId());
         standardAddress.setStatus(finalElement.getStatus());
         standardAddress.setStandardAddressType(finalElement.getAddressElementType());
-        standardAddress.setOrganizationCode(finalElement.getOrganizationCode());
         if (null != finalElement.getLng() && null != finalElement.getLat()) {
             String location = "{\"lat\":"+finalElement.getLat()+",\"lng\":"+finalElement.getLng()+"}";
             standardAddress.setLocation(location);
         }
+        if(organizationMap.containsKey(finalElement.getOrganizationCode()))
+            standardAddress.setOrganizationId(organizationMap.get(finalElement.getOrganizationCode()));
+
         if(AddressElementTypeEnum.HUSHI.typeCode == finalElement.getAddressElementType()){
             standardAddress.setRoomId(finalElement.getId());
         }
