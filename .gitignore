@@ -2,3 +2,5 @@
 standardAddressGenerate/.idea/*
 standardAddressGenerate/standardAddressGenerate.iml
 standardAddressGenerate/target/*
+standardAddressGenerate/src/main/resources/application.properties
+standardAddressGenerate/src/main/resources/application.properties
